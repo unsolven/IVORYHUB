@@ -1,0 +1,45 @@
+name: Auto Update Key Every 12 Hours
+
+on:
+  schedule:
+    # Runs at 00:00 and 12:00 UTC daily (every 12 hours)
+    - cron: '0 0,12 * * *'
+  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  update-key:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Required to push changes
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Generate new random key
+        run: |
+          # Generate a random 32-character alphanumeric key
+          NEW_KEY=$(cat /dev/urandom | tr -dc 'A-Za-z0-9' | fold -w 32 | head -n 1)
+          echo "New key generated successfully"
+          echo $NEW_KEY > key.txt
+          
+          # Display key in logs (for debugging, remove if you want it private)
+          echo "Generated key: $NEW_KEY"
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add key.txt
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🔑 Auto-update key - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            git push
+            echo "Key updated and pushed successfully!"
+          fi
