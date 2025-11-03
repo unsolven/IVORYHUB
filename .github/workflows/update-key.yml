@@ -2,16 +2,15 @@ name: Auto Update Key Every 12 Hours
 
 on:
   schedule:
-    # Runs at 00:00 and 12:00 UTC (every 12 hours)
     - cron: '0 0,12 * * *'
-  workflow_dispatch:  # Allows manual trigger from the Actions tab
+  workflow_dispatch:
 
 jobs:
   update-key:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: write  # Required to push changes
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -19,14 +18,22 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read previous key
+        id: oldkey
+        run: |
+          if [ -f key.txt ]; then
+            OLD_KEY=$(cat key.txt)
+            echo "OLD_KEY=$OLD_KEY" >> $GITHUB_ENV
+          else
+            echo "OLD_KEY=None" >> $GITHUB_ENV
+          fi
+
       - name: Generate new random key
         id: gen
         run: |
-          # Generate a secure and fast 32-character key
           NEW_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
           echo "$NEW_KEY" > key.txt
           echo "NEW_KEY=$NEW_KEY" >> $GITHUB_ENV
-          echo "✅ New key generated successfully: $NEW_KEY"
 
       - name: Commit and push changes
         run: |
@@ -34,39 +41,36 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add key.txt
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            exit 0
           else
             git commit -m "🔑 Auto-update key - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
             git push
-            echo "Key updated and pushed successfully!"
           fi
 
-      - name: Send key to Discord
+      - name: Send embed to Discord
         if: env.NEW_KEY != ''
         run: |
           WEBHOOK_URL="${{ secrets.DISCORD_WEBHOOK }}"
-          
           if [ -z "$WEBHOOK_URL" ]; then
-            echo "⚠️ No Discord webhook configured (secrets.DISCORD_WEBHOOK missing)"
             exit 0
           fi
-
           CURRENT_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-          # Create a red embed for Discord
+          OLD="${{ env.OLD_KEY }}"
+          NEW="${{ env.NEW_KEY }}"
           JSON_PAYLOAD=$(jq -n \
-            --arg title "🔑 New Key Generated" \
-            --arg key "$NEW_KEY" \
+            --arg title "🔑 Key Updated" \
+            --arg old "$OLD" \
+            --arg new "$NEW" \
             --arg time "$CURRENT_TIME" \
             '{
               "embeds": [{
                 "title": $title,
-                "description": ("```" + $key + "```"),
                 "color": 16711680,
-                "footer": { "text": ("Generated at " + $time) }
+                "fields": [
+                  { "name": "Old Key", "value": ("```" + $old + "```"), "inline": false },
+                  { "name": "New Key", "value": ("```" + $new + "```"), "inline": false }
+                ],
+                "footer": { "text": ("Updated at " + $time) }
               }]
             }')
-
-          curl -X POST -H "Content-Type: application/json" \
-            -d "$JSON_PAYLOAD" \
-            "$WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_PAYLOAD" "$WEBHOOK_URL"
