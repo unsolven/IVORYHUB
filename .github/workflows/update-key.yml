@@ -2,9 +2,9 @@ name: Auto Update Key Every 12 Hours
 
 on:
   schedule:
-    # Runs at 00:00 and 12:00 UTC daily (every 12 hours)
+    # Runs at 00:00 and 12:00 UTC (every 12 hours)
     - cron: '0 0,12 * * *'
-  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch:  # Allows manual trigger from the Actions tab
 
 jobs:
   update-key:
@@ -12,30 +12,27 @@ jobs:
     
     permissions:
       contents: write  # Required to push changes
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Generate new random key
+        id: gen
         run: |
-          # Generate a random 32-character alphanumeric key
-          NEW_KEY=$(cat /dev/urandom | tr -dc 'A-Za-z0-9' | fold -w 32 | head -n 1)
-          echo "New key generated successfully"
-          echo $NEW_KEY > key.txt
-          
-          # Display key in logs (for debugging, remove if you want it private)
-          echo "Generated key: $NEW_KEY"
-      
+          # Generate a secure and fast 32-character key
+          NEW_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
+          echo "$NEW_KEY" > key.txt
+          echo "NEW_KEY=$NEW_KEY" >> $GITHUB_ENV
+          echo "✅ New key generated successfully: $NEW_KEY"
+
       - name: Commit and push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add key.txt
-          
-          # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
@@ -43,3 +40,33 @@ jobs:
             git push
             echo "Key updated and pushed successfully!"
           fi
+
+      - name: Send key to Discord
+        if: env.NEW_KEY != ''
+        run: |
+          WEBHOOK_URL="${{ secrets.DISCORD_WEBHOOK }}"
+          
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "⚠️ No Discord webhook configured (secrets.DISCORD_WEBHOOK missing)"
+            exit 0
+          fi
+
+          CURRENT_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Create a red embed for Discord
+          JSON_PAYLOAD=$(jq -n \
+            --arg title "🔑 New Key Generated" \
+            --arg key "$NEW_KEY" \
+            --arg time "$CURRENT_TIME" \
+            '{
+              "embeds": [{
+                "title": $title,
+                "description": ("```" + $key + "```"),
+                "color": 16711680,
+                "footer": { "text": ("Generated at " + $time) }
+              }]
+            }')
+
+          curl -X POST -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD" \
+            "$WEBHOOK_URL"
