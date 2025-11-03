@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IvoryHub - Key System</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 0, 0, 0.03) 2px,
+                rgba(255, 0, 0, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 2;
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100px); }
+        }
+
+        .container {
+            max-width: 500px;
+            width: 90%;
+            padding: 0;
+            position: relative;
+            z-index: 1;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .glass-box {
+            background: rgba(10, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 
+                0 8px 32px rgba(255, 0, 0, 0.3),
+                inset 0 0 40px rgba(255, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(255, 0, 0, 0.1),
+                transparent
+            );
+            animation: shine 3s linear infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ff0000;
+        }
+
+        .corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+        .corner.tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+        .corner.bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+        .corner.br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        h2 {
+            color: #ff0000;
+            font-size: 32px;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 
+                0 0 10px rgba(255, 0, 0, 0.8),
+                0 0 20px rgba(255, 0, 0, 0.6),
+                0 0 30px rgba(255, 0, 0, 0.4);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px rgba(255, 0, 0, 0.8), 0 0 20px rgba(255, 0, 0, 0.6); }
+            to { text-shadow: 0 0 20px rgba(255, 0, 0, 1), 0 0 30px rgba(255, 0, 0, 0.8); }
+        }
+
+        .subtitle {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff0000, transparent);
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: #ff0000;
+            border-radius: 50%;
+            box-shadow: 0 0 20px #ff0000;
+        }
+
+        .key-label {
+            color: #ff3333;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .key-label::before {
+            content: '▶';
+            color: #ff0000;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+
+        .key-box {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .key-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.2), transparent);
+            animation: slide 3s linear infinite;
+        }
+
+        @keyframes slide {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        #keyText {
+            color: #ff6666;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            min-height: 24px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        @keyframes keyUpdate {
+            0% { 
+                transform: scale(1);
+                color: #ff6666;
+            }
+            50% { 
+                transform: scale(1.05);
+                color: #00ff00;
+                text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+            }
+            100% { 
+                transform: scale(1);
+                color: #ff6666;
+                text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+            }
+        }
+
+        .btn-copy {
+            background: linear-gradient(135deg, #cc0000, #ff0000);
+            color: #fff;
+            border: 2px solid rgba(255, 0, 0, 0.5);
+            padding: 14px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+            width: 100%;
+        }
+
+        .btn-copy::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn-copy:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-copy:hover {
+            background: linear-gradient(135deg, #ff0000, #ff3333);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+            transform: translateY(-2px);
+            border-color: rgba(255, 0, 0, 0.8);
+        }
+
+        .btn-copy:active {
+            transform: translateY(0);
+        }
+
+        .btn-copy span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .api-info {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .api-label {
+            color: #ff3333;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .api-url {
+            color: #ffcccc;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            border: 1px solid rgba(255, 0, 0, 0.15);
+        }
+
+        .timer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 0, 0, 0.2);
+        }
+
+        .timer-label {
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .timer-value {
+            color: #ff0000;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        @media (max-width: 600px) {
+            .container { width: 95%; }
+            .glass-box { padding: 25px; }
+            h2 { font-size: 24px; letter-spacing: 2px; }
+            .subtitle { font-size: 12px; }
+            #keyText { font-size: 14px; }
+            .btn-copy { padding: 12px 24px; font-size: 12px; }
+            .api-url { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gridCanvas"></canvas>
+    <div class="scanline"></div>
+
+    <div class="container">
+        <div class="glass-box">
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+
+            <div class="content">
+                <h2>IvoryHub</h2>
+                <p class="subtitle">Access key system • Secure authentication • Key rotates every 12 hours</p>
+
+                <div class="divider"></div>
+
+                <div class="key-label">Access Key</div>
+                <div class="key-box">
+                    <div id="keyText">Loading key...</div>
+                </div>
+
+                <button class="btn-copy" id="copyBtn">
+                    <span>Copy Key</span>
+                </button>
+
+                <div class="api-info">
+                    <div class="api-label">🔗 Raw Key URL for Roblox</div>
+                    <div class="api-url" id="apiUrl">Loading...</div>
+                    <div style="margin-top: 10px; color: #888; font-size: 11px;">
+                        Use this URL in your Roblox loadstring to verify keys
+                    </div>
+                </div>
+
+                <div class="timer">
+                    <div class="timer-label">Next Rotation In</div>
+                    <div class="timer-value" id="countdown">--:--:--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.8/clipboard.min.js"></script>
+    <script>
+        // ============================================
+        // CONFIGURATION - UPDATE THESE VALUES
+        // ============================================
+        const GITHUB_USER = "YOUR-USERNAME";     // Your GitHub username
+        const GITHUB_REPO = "YOUR-REPO-NAME";    // Your repository name
+        // ============================================
+
+        const RAW_KEY_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/key.txt`;
+
+        // Animated Grid Canvas
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let w, h, gridSize = 40, particles = [];
+
+        function resize() {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+        }
+        
+        resize();
+        window.addEventListener('resize', resize);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * w;
+                this.y = Math.random() * h;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.life = Math.random();
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.001;
+                
+                if (this.x < 0 || this.x > w) this.vx *= -1;
+                if (this.y < 0 || this.y > h) this.vy *= -1;
+                if (this.life <= 0) this.life = 1;
+            }
+            
+            draw() {
+                ctx.fillStyle = `rgba(255, 0, 0, ${this.life * 0.5})`;
+                ctx.fillRect(this.x, this.y, 2, 2);
+            }
+        }
+
+        for (let i = 0; i < 50; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, w, h);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.1)';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x < w; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < h; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // Highlight grid intersections
+            for (let x = 0; x < w; x += gridSize) {
+                for (let y = 0; y < h; y += gridSize) {
+                    const distance = Math.hypot(x - w/2, y - h/2);
+                    const alpha = Math.max(0, 1 - distance / (w * 0.5));
+                    ctx.fillStyle = `rgba(255, 0, 0, ${alpha * 0.3})`;
+                    ctx.fillRect(x - 1, y - 1, 2, 2);
+                }
+            }
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+
+        // Fetch Key from GitHub Raw Link
+        const keyText = document.getElementById('keyText');
+        let currentKey = '';
+        
+        function fetchKey() {
+            // Add timestamp to prevent caching
+            const timestamp = new Date().getTime();
+            fetch(`${RAW_KEY_URL}?t=${timestamp}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.text();
+                })
+                .then(data => {
+                    const newKey = data.trim();
+                    if (newKey && newKey !== currentKey) {
+                        currentKey = newKey;
+                        keyText.textContent = newKey;
+                        
+                        // Visual feedback when key changes
+                        keyText.style.animation = 'none';
+                        setTimeout(() => {
+                            keyText.style.animation = 'keyUpdate 0.5s ease';
+                        }, 10);
+                    }
+                })
+                .catch(error => {
+                    keyText.textContent = "Failed to load key. Check configuration.";
+                    console.error("Key fetch failed:", error);
+                    console.error("URL:", RAW_KEY_URL);
+                });
+        }
+        
+        // Initial fetch
+        fetchKey();
+        
+        // Refresh every 30 seconds to catch new keys quickly
+        setInterval(fetchKey, 30000);
+        
+        // Update API URL display
+        document.getElementById('apiUrl').textContent = RAW_KEY_URL;
+        
+        // Check for key rotation time
+        function checkKeyRotation() {
+            const now = new Date();
+            const hours = now.getUTCHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // At 00:00:00 or 12:00:00 UTC, refresh immediately
+            if ((hours === 0 || hours === 12) && minutes === 0 && seconds <= 5) {
+                setTimeout(fetchKey, 2000);
+            }
+        }
+        
+        setInterval(checkKeyRotation, 1000);
+
+        // Copy functionality
+        const clipboard = new ClipboardJS('#copyBtn', {
+            text: () => keyText.textContent
+        });
+
+        clipboard.on('success', function(e) {
+            const btn = document.getElementById('copyBtn');
+            const span = btn.querySelector('span');
+            span.textContent = 'Copied!';
+            btn.style.background = 'linear-gradient(135deg, #00cc00, #00ff00)';
+            
+            setTimeout(() => {
+                span.textContent = 'Copy Key';
+                btn.style.background = '';
+            }, 1500);
+        });
+
+        // Countdown Timer
+        function updateCountdown() {
+            const now = new Date();
+            const hours = now.getUTCHours();
+            const nextRotation = new Date();
+            
+            if (hours < 12) {
+                nextRotation.setUTCHours(12, 0, 0, 0);
+            } else {
+                nextRotation.setUTCDate(nextRotation.getUTCDate() + 1);
+                nextRotation.setUTCHours(0, 0, 0, 0);
+            }
+            
+            const diff = nextRotation - now;
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            
+            document.getElementById('countdown').textContent = 
+                `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>
