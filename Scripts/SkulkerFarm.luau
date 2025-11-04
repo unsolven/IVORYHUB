@@ -11,7 +11,7 @@ function SkulkerFarm.start(player, getCharacter, smoothFlyTo, isEnabledFunc)
         while isRunning and isEnabledFunc() do
             local character, humanoid, rootPart = getCharacter()
             
-            if not humanoid or humanoid.Health <= 0 then 
+            if not humanoid or humanoid.Health <= 0 or not rootPart then 
                 task.wait(1)
                 continue 
             end
@@ -43,7 +43,7 @@ function SkulkerFarm.start(player, getCharacter, smoothFlyTo, isEnabledFunc)
                 repeat task.wait() until not _G.isFlying or not isRunning
                 
                 character, humanoid, rootPart = getCharacter()
-                while isEnabledFunc() and nearestSkulker.humanoid.Health > 0 and humanoid and humanoid.Health > 0 do
+                while isEnabledFunc() and nearestSkulker.humanoid.Health > 0 and humanoid and humanoid.Health > 0 and rootPart do
                     workspace.GameEvents.Damage:FireServer()
                     task.wait(0.1)
                     workspace.GameEvents.AOEDamage:FireServer()
