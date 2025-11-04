@@ -28,30 +28,39 @@ getCharacter()
 local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/ESP.luau"))()
 local MeteorFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/MeteorFarm.luau"))()
 local GlassBeamFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/GlassbeamFarm.luau"))()
-local DinoInventory = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/Inventory.luau"))()
+local DinoInventory = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/inventory.luau"))()
+local SkulkerFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/SkulkerFarm.luau"))()
+local Type4Farm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/Type4farm.luau"))()
+local Type2Farm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/Type2farm.luau"))()
 
 local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/UI.luau"))()
 local Window = DrRayLibrary:Load("ivoryHub", "Default")
 
 local MainTab = DrRayLibrary.newTab("Main")
 local FarmTab = DrRayLibrary.newTab("Farm")
+local EventTab = DrRayLibrary.newTab("Event")
 local PlayerTab = DrRayLibrary.newTab("Player")
 local EspTab = DrRayLibrary.newTab("ESP")
 local SettingsTab = DrRayLibrary.newTab("Settings")
 
 local isFlying = false
 local autoFarm = { meteor = false, glassBeam = false }
+local autoEvent = { skulker = false, type4 = false, type2 = false }
 local autoAttack = { normal = false, aoe = false }
 local flySpeed = 50
 playerMods = { walkSpeed = 16, jumpPower = 50 }
 
+_G.isFlying = false
+
 local function stopAllMovement() 
-    isFlying = false 
+    isFlying = false
+    _G.isFlying = false
 end
 
 local function smoothFlyTo(targetPos)
     if isFlying or not rootPart then return end
     isFlying = true
+    _G.isFlying = true
     task.spawn(function()
         getCharacter()
         local startPosition = rootPart.Position
@@ -63,6 +72,7 @@ local function smoothFlyTo(targetPos)
             rootPart.CFrame = CFrame.new(startPosition:Lerp(targetPos, elapsedTime / duration))
         end
         isFlying = false
+        _G.isFlying = false
     end)
 end
 
@@ -138,6 +148,37 @@ FarmTab.newToggle("Auto Collect GlassBeam", "Flies into Glass Beams to collect t
     end
     autoFarm.glassBeam = v
     stopAllMovement() 
+end)
+
+EventTab.newLabel("Event Farming")
+EventTab.newToggle("Auto Farm Skulker", "Automatically attacks Skulkers until dead.", false, function(v)
+    if v then
+        SkulkerFarm.start(player, getCharacter, smoothFlyTo, function() return autoEvent.skulker end)
+    else
+        SkulkerFarm.stop()
+    end
+    autoEvent.skulker = v
+    stopAllMovement()
+end)
+
+EventTab.newToggle("Auto Get Type⁴", "Automatically collects Type4 event items.", false, function(v)
+    if v then
+        Type4Farm.start(player, getCharacter, smoothFlyTo, function() return autoEvent.type4 end)
+    else
+        Type4Farm.stop()
+    end
+    autoEvent.type4 = v
+    stopAllMovement()
+end)
+
+EventTab.newToggle("Auto Get Type²", "Automatically collects event meteors.", false, function(v)
+    if v then
+        Type2Farm.start(player, getCharacter, smoothFlyTo, function() return autoEvent.type2 end)
+    else
+        Type2Farm.stop()
+    end
+    autoEvent.type2 = v
+    stopAllMovement()
 end)
 
 PlayerTab.newSlider("WalkSpeed", "Changes your WalkSpeed.", 16, 200, 16, false, function(v) 
