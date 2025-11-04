@@ -11,7 +11,7 @@ function MeteorFarm.start(player, getCharacter, smoothFlyTo, isEnabledFunc)
         while isRunning and isEnabledFunc() do
             local character, humanoid, rootPart = getCharacter()
             
-            if not humanoid or humanoid.Health <= 0 then 
+            if not humanoid or humanoid.Health <= 0 or not rootPart then 
                 task.wait(1)
                 continue 
             end
@@ -34,10 +34,10 @@ function MeteorFarm.start(player, getCharacter, smoothFlyTo, isEnabledFunc)
             if nearestMeteor then
                 smoothFlyTo(nearestMeteor.part.Position + Vector3.new(0, 5, 0))
                 
-                repeat task.wait() until not isFlying or not isRunning
+                repeat task.wait() until not _G.isFlying or not isRunning
                 
                 character, humanoid, rootPart = getCharacter()
-                if isEnabledFunc() and humanoid and humanoid.Health > 0 and (nearestMeteor.part.Position - rootPart.Position).Magnitude < 20 then 
+                if isEnabledFunc() and humanoid and humanoid.Health > 0 and rootPart and (nearestMeteor.part.Position - rootPart.Position).Magnitude < 20 then 
                     nearestMeteor.prompt.HoldDuration = 0
                     fireproximityprompt(nearestMeteor.prompt)
                     task.wait(1) 
