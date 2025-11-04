@@ -4,23 +4,23 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-
 local player = Players.LocalPlayer
 local character, humanoid, rootPart
 
 local function getCharacter()
-    character = player.Character
-    if character then
-        humanoid = character:FindFirstChildOfClass("Humanoid")
-        rootPart = character:FindFirstChild("HumanoidRootPart")
-    end
+    character = player.Character or player.CharacterAdded:Wait()
+    humanoid = character:FindFirstChildOfClass("Humanoid")
+    rootPart = character:FindFirstChild("HumanoidRootPart")
+    return character, humanoid, rootPart
 end
+
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
+    task.wait(1)
     getCharacter()
-    if humanoid then
-        if playerMods and playerMods.walkSpeed then humanoid.WalkSpeed = playerMods.walkSpeed end
-        if playerMods and playerMods.jumpPower then humanoid.JumpPower = playerMods.jumpPower end
+    if humanoid and playerMods then
+        humanoid.WalkSpeed = playerMods.walkSpeed or 16
+        humanoid.JumpPower = playerMods.jumpPower or 50
     end
 end)
 getCharacter()
@@ -29,13 +29,9 @@ local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/
 local MeteorFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/MeteorFarm.luau"))()
 local GlassBeamFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/GlassbeamFarm.luau"))()
 local DinoInventory = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/inventory.luau"))()
-local SkulkerFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/SkulkerFarm.luau"))()
-local Type4Farm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/Type4farm.luau"))()
-local Type2Farm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/Type2farm.luau"))()
-
 local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/UI.luau"))()
-local Window = DrRayLibrary:Load("ivoryHub", "Default")
 
+local Window = DrRayLibrary:Load("ivoryHub", "Default")
 local MainTab = DrRayLibrary.newTab("Main")
 local FarmTab = DrRayLibrary.newTab("Farm")
 local EventTab = DrRayLibrary.newTab("Event")
@@ -43,41 +39,117 @@ local PlayerTab = DrRayLibrary.newTab("Player")
 local EspTab = DrRayLibrary.newTab("ESP")
 local SettingsTab = DrRayLibrary.newTab("Settings")
 
-local isFlying = false
 local autoFarm = { meteor = false, glassBeam = false }
 local autoEvent = { skulker = false, type4 = false, type2 = false }
 local autoAttack = { normal = false, aoe = false }
 local flySpeed = 50
 playerMods = { walkSpeed = 16, jumpPower = 50 }
-
+local isFlying = false
 _G.isFlying = false
 
-local function stopAllMovement() 
+local function stopAllMovement()
     isFlying = false
     _G.isFlying = false
 end
 
-local function smoothFlyTo(targetPos)
+local function smoothFlyTo(targetPos, callback)
     if isFlying or not rootPart then return end
     isFlying = true
     _G.isFlying = true
     task.spawn(function()
-        getCharacter()
-        local startPosition = rootPart.Position
-        local duration = math.clamp((startPosition - targetPos).Magnitude / (flySpeed * 2.5), 1, 5)
-        local elapsedTime = 0
-        while elapsedTime < duration and isFlying and rootPart and humanoid and humanoid.Health > 0 do
-            elapsedTime = elapsedTime + RunService.Heartbeat:Wait()
-            if not rootPart or not rootPart.Parent then break end
-            rootPart.CFrame = CFrame.new(startPosition:Lerp(targetPos, elapsedTime / duration))
+        local char, hum, root = getCharacter()
+        if not root then isFlying = false _G.isFlying = false return end
+        local startPos = root.Position
+        local distance = (startPos - targetPos).Magnitude
+        local duration = math.clamp(distance / (flySpeed * 2.5), 0.3, 3)
+        local elapsed = 0
+        while elapsed < duration and isFlying and root and hum.Health > 0 do
+            elapsed += RunService.Heartbeat:Wait()
+            if not root or not root.Parent then break end
+            local t = elapsed / duration
+            local newPos = startPos:Lerp(targetPos, t)
+            root.CFrame = CFrame.new(newPos)
         end
         isFlying = false
         _G.isFlying = false
+        if callback then callback() end
     end)
 end
 
+local function startSkulkerFarm()
+    if skulkerFarmLoop then skulkerFarmLoop:Disconnect() end
+    skulkerFarmLoop = RunService.Heartbeat:Connect(function()
+        if not autoEvent.skulker then return end  -- Remove "or isFlying"
+        
+        local folder = workspace:FindFirstChild("CharStorage") and workspace.CharStorage:FindFirstChild("Skulker")
+        if not folder then return end
+        local closest, dist = nil, math.huge
+        for _, s in pairs(folder:GetChildren()) do
+            local hrp = s:FindFirstChild("HumanoidRootPart")
+            local hum = s:FindFirstChild("Humanoid")
+            if hrp and hum and hum.Health > 0 then
+                local d = (rootPart.Position - hrp.Position).Magnitude
+                if d < dist then dist = d closest = hrp end
+            end
+        end
+        if closest and dist > 8 then  -- Only fly if not already close
+            local targetPos = closest.Position - (closest.CFrame.LookVector * 5) + Vector3.new(0, 2, 0)
+            smoothFlyTo(targetPos, function()
+                workspace.GameEvents.Damage:FireServer()
+                workspace.GameEvents.AOEDamage:FireServer()
+            end)
+        elseif closest and dist <= 8 then
+            -- Already close, just attack
+            workspace.GameEvents.Damage:FireServer()
+            workspace.GameEvents.AOEDamage:FireServer()
+        end
+    end)
+end
+
+local function stopSkulkerFarm()
+    if skulkerFarmLoop then skulkerFarmLoop:Disconnect() end
+end
+
+local function findNearest(tbl)
+    local closest, dist = nil, math.huge
+    for _, obj in pairs(tbl) do
+        if obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) then
+            local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            local d = (rootPart.Position - part.Position).Magnitude
+            if d < dist then dist = d closest = part end
+        end
+    end
+    return closest
+end
+
+local function goToNearestFish()
+    local storage = workspace:FindFirstChild("FishStorage")
+    if not storage then return end
+    local nearest = findNearest(storage:GetChildren())
+    if nearest then smoothFlyTo(nearest.Position + Vector3.new(0, 5, 0)) end
+end
+
+local function goToNearestLizard()
+    local misc = workspace:FindFirstChild("MiscellaneousStorage")
+    if not misc or not misc:FindFirstChild("LizardStorage") then return end
+    local storage = misc.LizardStorage
+    local nearest = findNearest(storage:GetChildren())
+    if nearest then smoothFlyTo(nearest.Position + Vector3.new(0, 5, 0)) end
+end
+
+EventTab.newLabel("Event Farming")
+EventTab.newToggle("Auto Farm Skulker", "Kills Skulkers automatically.", false, function(v)
+    autoEvent.skulker = v
+    if v then startSkulkerFarm() else stopSkulkerFarm() end
+    stopAllMovement()
+end)
+
+MainTab.newLabel("Food Finder")
+MainTab.newButton("Find Fish", "Goes to nearest Fish", function() goToNearestFish() end)
+MainTab.newButton("Find Lizard", "Goes to nearest Lizard", function() goToNearestLizard() end)
+
 MainTab.newLabel("Combat")
-MainTab.newToggle("Auto Normal Attack", "Continuously performs your primary attack.", false, function(v)
+MainTab.newToggle("Auto Normal Attack", "Spams primary attack.", false, function(v)
     autoAttack.normal = v
     if v then
         task.spawn(function()
@@ -89,7 +161,7 @@ MainTab.newToggle("Auto Normal Attack", "Continuously performs your primary atta
     end
 end)
 
-MainTab.newToggle("Auto AOE Attack", "Continuously performs your special attack.", false, function(v)
+MainTab.newToggle("Auto AOE Attack", "Spams AOE attack.", false, function(v)
     autoAttack.aoe = v
     if v then
         task.spawn(function()
@@ -102,108 +174,49 @@ MainTab.newToggle("Auto AOE Attack", "Continuously performs your special attack.
 end)
 
 MainTab.newLabel("General Utilities")
-MainTab.newToggle("Disable Combat", "Forces you out of combat status.", false, function(v)
-    if v then 
-        task.spawn(function() 
-            while v do 
-                if player and player:FindFirstChild("PlayerStats") and player.PlayerStats:FindFirstChild("inCombat") then 
-                    player.PlayerStats.inCombat.Value = false 
+MainTab.newToggle("Disable Combat", "Forces out of combat.", false, function(v)
+    if v then
+        task.spawn(function()
+            while v do
+                if player.PlayerStats and player.PlayerStats:FindFirstChild("inCombat") then
+                    player.PlayerStats.inCombat.Value = false
                 end
-                task.wait(0.5) 
-            end 
-        end) 
+                task.wait(0.5)
+            end
+        end)
     end
 end)
 
-MainTab.newLabel("Dinosaur Tokens")
-local dinoNameInput
-MainTab.newInput("Dinosaur Name", "Enter a dinosaur name to get its data.", function(text) 
-    dinoNameInput = text 
-end)
-MainTab.newButton("Add Dinosaur to Inventory", "Simulates ownership for skins.", function()
-    local success, message = DinoInventory.addDinosaur(player, dinoNameInput)
-    print("Ivory Hub: " .. message)
-end)
-MainTab.newButton("Add All Dinosaurs", "Adds every dinosaur from database.", function()
-    local success, message = DinoInventory.addAllDinosaurs(player)
-    print("Ivory Hub: " .. message)
-end)
-
-FarmTab.newLabel("Auto Farm")
-FarmTab.newToggle("Auto Collect Meteor", "Automatically finds and collects meteors.", false, function(v)
-    if v then
-        MeteorFarm.start(player, getCharacter, smoothFlyTo, function() return autoFarm.meteor end)
-    else
-        MeteorFarm.stop()
-    end
+FarmTab.newToggle("Auto Collect Meteor", "Collects meteors.", false, function(v)
     autoFarm.meteor = v
+    if v then MeteorFarm.start(player, getCharacter, smoothFlyTo, function() return autoFarm.meteor end)
+    else MeteorFarm.stop() end
     stopAllMovement()
 end)
 
-FarmTab.newToggle("Auto Collect GlassBeam", "Flies into Glass Beams to collect them.", false, function(v) 
-    if v then
-        GlassBeamFarm.start(smoothFlyTo, function() return autoFarm.glassBeam end, function() return isFlying end)
-    else
-        GlassBeamFarm.stop()
-    end
+FarmTab.newToggle("Auto Collect GlassBeam", "Collects beams.", false, function(v)
     autoFarm.glassBeam = v
-    stopAllMovement() 
-end)
-
-EventTab.newLabel("Event Farming")
-EventTab.newToggle("Auto Farm Skulker", "Automatically attacks Skulkers until dead.", false, function(v)
-    if v then
-        SkulkerFarm.start(player, getCharacter, smoothFlyTo, function() return autoEvent.skulker end)
-    else
-        SkulkerFarm.stop()
-    end
-    autoEvent.skulker = v
+    if v then GlassBeamFarm.start(smoothFlyTo, function() return autoFarm.glassBeam end, function() return isFlying end)
+    else GlassBeamFarm.stop() end
     stopAllMovement()
 end)
 
-EventTab.newToggle("Auto Get Type⁴", "Automatically collects Type4 event items.", false, function(v)
-    if v then
-        Type4Farm.start(player, getCharacter, smoothFlyTo, function() return autoEvent.type4 end)
-    else
-        Type4Farm.stop()
-    end
-    autoEvent.type4 = v
-    stopAllMovement()
-end)
-
-EventTab.newToggle("Auto Get Type²", "Automatically collects event meteors.", false, function(v)
-    if v then
-        Type2Farm.start(player, getCharacter, smoothFlyTo, function() return autoEvent.type2 end)
-    else
-        Type2Farm.stop()
-    end
-    autoEvent.type2 = v
-    stopAllMovement()
-end)
-
-PlayerTab.newSlider("WalkSpeed", "Changes your WalkSpeed.", 16, 200, 16, false, function(v) 
+PlayerTab.newSlider("WalkSpeed", "16-200", 16, 200, 16, false, function(v)
     playerMods.walkSpeed = v
-    if humanoid then humanoid.WalkSpeed = v end 
+    if humanoid then humanoid.WalkSpeed = v end
 end)
-PlayerTab.newSlider("JumpPower", "Changes your JumpPower.", 50, 300, 50, false, function(v) 
+PlayerTab.newSlider("JumpPower", "50-300", 50, 300, 50, false, function(v)
     playerMods.jumpPower = v
-    if humanoid then humanoid.JumpPower = v end 
+    if humanoid then humanoid.JumpPower = v end
 end)
 
-EspTab.newLabel("ESP Settings")
-EspTab.newToggle("Enable ESP", "Master switch for the ESP.", true, function(v) ESP.SetEnabled(v) end)
-EspTab.newToggle("Show Boxes", "Draws a box around players.", true, function(v) ESP.SetShowBoxes(v) end)
-EspTab.newToggle("Show Names", "Displays player names.", true, function(v) ESP.SetShowNames(v) end)
-EspTab.newToggle("Show Tracers", "Draws a line to players.", true, function(v) ESP.SetShowTracers(v) end)
-EspTab.newToggle("Show Health", "Displays a health bar on the side.", true, function(v) ESP.SetShowHealth(v) end)
-EspTab.newToggle("Rainbow Color", "Cycles through rainbow colors.", true, function(v) ESP.SetRainbow(v) end)
+EspTab.newToggle("Enable ESP", "Master ESP", true, function(v) ESP.SetEnabled(v) end)
+EspTab.newToggle("Show Boxes", "", true, function(v) ESP.SetShowBoxes(v) end)
+EspTab.newToggle("Show Names", "", true, function(v) ESP.SetShowNames(v) end)
+EspTab.newToggle("Show Tracers", "", true, function(v) ESP.SetShowTracers(v) end)
+EspTab.newToggle("Show Health", "", true, function(v) ESP.SetShowHealth(v) end)
+EspTab.newToggle("Rainbow Color", "", true, function(v) ESP.SetRainbow(v) end)
 
-SettingsTab.newSlider("Fly Speed", "Adjusts the speed of all flight.", 20, 200, 30, false, function(v) 
-    flySpeed = v 
-end)
-SettingsTab.newButton("Rejoin Server", "Teleports you to a new server.", function() 
-    TeleportService:Teleport(game.PlaceId) 
-end)
-SettingsTab.newButton("Destroy GUI", "Closes the UI completely.", function() 
-    Window:Close() 
-end)
+SettingsTab.newSlider("Fly Speed", "20-200", 20, 200, 50, false, function(v) flySpeed = v end)
+SettingsTab.newButton("Rejoin Server", "", function() TeleportService:Teleport(game.PlaceId) end)
+SettingsTab.newButton("Destroy GUI", "", function() Window:Close() end)
