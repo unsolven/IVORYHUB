@@ -29,7 +29,7 @@ local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/
 local MeteorFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/MeteorFarm.luau"))()
 local GlassBeamFarm = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/GlassbeamFarm.luau"))()
 local DinoInventory = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/Scripts/inventory.luau"))()
-local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/DiosDi/VexonHub/refs/heads/main/Test-VexonHub"))()
+local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/unsolven/IVORYHUB/refs/heads/main/UILIB.luau"))()
 
 local Window = DrRayLibrary:Load("ivoryHub", "Default")
 local MainTab = DrRayLibrary.newTab("Main")
@@ -76,11 +76,11 @@ local function smoothFlyTo(targetPos, callback)
     end)
 end
 
+local skulkerFarmLoop
 local function startSkulkerFarm()
     if skulkerFarmLoop then skulkerFarmLoop:Disconnect() end
     skulkerFarmLoop = RunService.Heartbeat:Connect(function()
-        if not autoEvent.skulker then return end  -- Remove "or isFlying"
-        
+        if not autoEvent.skulker or isFlying then return end
         local folder = workspace:FindFirstChild("CharStorage") and workspace.CharStorage:FindFirstChild("Skulker")
         if not folder then return end
         local closest, dist = nil, math.huge
@@ -92,16 +92,12 @@ local function startSkulkerFarm()
                 if d < dist then dist = d closest = hrp end
             end
         end
-        if closest and dist > 8 then  -- Only fly if not already close
-            local targetPos = closest.Position - (closest.CFrame.LookVector * 5) + Vector3.new(0, 2, 0)
+        if closest and dist < 300 then
+            local targetPos = closest.Position - (closest.CFrame.LookVector * 2) + Vector3.new(0, 2, 0)
             smoothFlyTo(targetPos, function()
                 workspace.GameEvents.Damage:FireServer()
                 workspace.GameEvents.AOEDamage:FireServer()
             end)
-        elseif closest and dist <= 8 then
-            -- Already close, just attack
-            workspace.GameEvents.Damage:FireServer()
-            workspace.GameEvents.AOEDamage:FireServer()
         end
     end)
 end
@@ -219,4 +215,4 @@ EspTab.newToggle("Rainbow Color", "", true, function(v) ESP.SetRainbow(v) end)
 
 SettingsTab.newSlider("Fly Speed", "20-200", 20, 200, 50, false, function(v) flySpeed = v end)
 SettingsTab.newButton("Rejoin Server", "", function() TeleportService:Teleport(game.PlaceId) end)
-SettingsTab.newButton("Destroy GUI", "", function() Window:Close() end)
+SettingsTab.newButton("Destroy GUI", "", function() Window:Close() end
