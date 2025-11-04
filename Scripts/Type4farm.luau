@@ -11,7 +11,7 @@ function Type4Farm.start(player, getCharacter, smoothFlyTo, isEnabledFunc)
         while isRunning and isEnabledFunc() do
             local character, humanoid, rootPart = getCharacter()
             
-            if not humanoid or humanoid.Health <= 0 then 
+            if not humanoid or humanoid.Health <= 0 or not rootPart then 
                 task.wait(1)
                 continue 
             end
